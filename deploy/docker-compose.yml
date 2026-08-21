@@ -82,7 +82,7 @@ services:
       ingress:
         condition: service_started
       mediamtx:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   redis-data:

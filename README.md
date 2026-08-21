@@ -167,6 +167,8 @@ ffmpeg -re -f lavfi -i "testsrc=size=640x360:rate=25" -f lavfi -i "sine=frequenc
 ## 已知限制
 
 - **LiveKit ingress WHIP 输入**只接受精确 fmtp 匹配的 H.264(42001f)/VP8 offer（官方 `newMediaEngine` 硬编码），摄像头透传 SDP 无法协商 → 主链路用 RTMP forward（同为无重编码转发）
+- **H.265 摄像头**：mediamtx RTMP forward 用 Enhanced RTMP 封装 H.265，但 LiveKit ingress 的 RTMP 输入**无法解码 Enhanced RTMP H.265 视频**（只发布音频轨）→ H.265 摄像头请用 `mode=ffmpeg`（转码 H.264）；H.264 摄像头可用 direct 无重编码
 - **MediaMTX 官方镜像无 shell**，无法容器内 healthcheck；依赖 camingress 启动时 API 轮询（`WaitReady`）
 - **Docker Desktop (WSL2) localhost UDP 端口转发不可靠**：浏览器 WebRTC 媒体面（UDP 7882-7886）连不通，报 "could not establish pc connection" → **Windows 研发模式必须原生跑 livekit-server**（见快速开始）；生产 Linux 无此问题
 - Docker Desktop 下 mediamtx 容器端口映射偶发异常（如 9997 丢失），`--force-recreate` 可修复
+- 浏览器信令用 `access_token` 参数（livekit-client 自动处理）；调试时 curl 需用 `?access_token=` 而非 `?token=`

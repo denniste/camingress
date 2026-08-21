@@ -1,8 +1,8 @@
 # LiveKit Ingress 服务配置
 api_key: devkey
 api_secret: secret
-# 原生 livekit-server (Windows 宿主) 时用 host.docker.internal; 全容器部署时用 ws://livekit:7880
-ws_url: ws://host.docker.internal:7880
+# 研发环境 (livekit host 网络): ws://192.168.31.104:7880; 生产: ws://livekit:7880
+ws_url: ws://192.168.31.104:7880
 
 redis:
   address: redis:6379
