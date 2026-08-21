@@ -1,6 +1,7 @@
 # 项目状态 (Project Status)
 
 > 快照时间：2026-08-21 · 由 Hermes 分析生成 · 项目根：`D:\LiveKit`
+> 更新：2026-08-21 环境全量恢复（git / Go / Docker），编译验证通过
 
 ## 1. 项目概况
 
@@ -50,8 +51,8 @@
 
 | 组件 | 状态 | 说明 |
 |---|---|---|
-| Go | ❌ 不在 PATH | `videohub.exe` 为迁移前编译产物；需安装 Go 1.23+ 或恢复工具链 |
-| Docker | ❌ 不在 PATH | 研发流程（redis/livekit/ingress 容器）暂不可用 |
+| Go | ✅ 1.27.0（D:\go） | 2026-08-21 安装，PATH 已持久化；`videohub.exe` 已重新编译通过 |
+| Docker | ✅ Desktop 4.87.0（引擎 29.7.2） | 2026-08-21 安装，WSL2 后端运行中；compose 配置验证通过 |
 | Node | ✅ v24.14.0 | npm 11.9.0，前端依赖已安装（node_modules 存在） |
 | ffmpeg | ✅ 日志显示推流链路可用 | videohub.log 有 aac/swscaler 转码输出（H.265→H.264/AAC 真实跑过） |
 | 运行状态 | ⏸ 当前未运行 | 上次运行 2026-08-21 04:47（videohub.log） |
@@ -66,10 +67,11 @@
 
 ## 6. 已知问题 / 待办
 
-1. **git 仓库缺失**：`D:\LiveKit` 不是 git 仓库（.gitignore 存在但 .git 未随迁移带过来）→ 建议 `git init` 恢复版本管理
-2. **Go 工具链缺失**：无法重新编译/开发后端，需安装 Go 1.23+（或将 E: 上的工具链恢复）
-3. **Docker CLI 缺失**：无法本地启动 LiveKit 依赖栈验证
-4. **graphify-out/**：含 2026-08-21 的代码图谱分析（182 nodes / 12 communities），可作架构参考
+1. ~~git 仓库缺失~~ ✅ 已恢复（2026-08-21 init + 首次提交 `63df52d`）
+2. ~~Go 工具链缺失~~ ✅ 已安装 Go 1.27.0（D:\go，PATH 已持久化），`videohub.exe` 重新编译通过
+3. ~~Docker CLI 缺失~~ ✅ 已安装 Docker Desktop 4.87.0（引擎 29.7.2，WSL2 后端运行中）
+4. **完整栈未端到端验证**：redis/livekit/ingress 容器尚未 `docker compose up`（需拉镜像）
+5. graphify-out/ 缓存已从 git 排除（仅保留报告）
 
 ## 7. 相关资产
 
