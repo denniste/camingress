@@ -2,6 +2,7 @@
 
 > 快照时间：2026-08-21 · 由 Hermes 分析生成 · 项目根：`D:\CamIngress`
 > 更新：2026-08-21 环境全量恢复（git / Go / Docker），编译验证通过
+> 更新：2026-08-22 三档路由重构（MediaMTX 媒体引擎）端到端验证通过
 
 ## 1. 项目概况
 
@@ -14,16 +15,16 @@
 
 ## 2. 代码资产
 
-### Go 中间层 `server/`（module: github.com/denniste/camingress/server, Go 1.23）— 共 1342 行
+### Go 中间层 `server/`（module: github.com/denniste/camingress/server, Go 1.23）— 约 1500 行
 | 包 | 文件 | 职责 |
 |---|---|---|
-| main | main.go (58) | 入口：SQLite + push + livekit + discovery 装配 |
-| internal/api | server.go | WebAPI：13 个路由（health/devices/channels/discover/token） |
+| main | main.go | 入口：SQLite + push + livekit + discovery + mediamtx 装配 |
+| internal/api | server.go | WebAPI：13 个路由 + 三档路由编排（direct/ffmpeg） |
 | internal/discovery | onvif.go | ONVIF WS-Discovery 发现 + RTSP 探测 |
 | internal/livekit | client.go | LiveKit token 签发 / ingress 管理 (twirp) |
-| internal/push | push.go (109) | ffmpeg 子进程管理：RTSP 拉流→转码→RTMP 推流 |
-| internal/rtsp | engine.go (158) | go2rtc HTTP API 客户端（WHEP 直看，可选） |
-| internal/store | store.go (265) | SQLite 存储（设备/通道表，凭证 AES-GCM 加密） |
+| internal/mediamtx | client.go | MediaMTX HTTP API 客户端（v1.20 config/paths） |
+| internal/push | push.go | ffmpeg 子进程管理（回退链路） |
+| internal/store | store.go | SQLite 存储（设备/通道表，含 mode 列迁移） |
 
 ### Vue 3 前端 `web/`（camingress-web, Vite 5）— 共 414 行
 - 视图：Channels.vue (112) / Discovery.vue (69) / Player.vue (92) / Meeting.vue (126)

@@ -40,7 +40,9 @@ type Channel struct {
 	Name      string    `json:"name"`
 	Source    string    `json:"source"`    // rtsp://... / 文件 / usb
 	Status    string    `json:"status"`    // active/stopped/error
-	Transcode string    `json:"transcode"` // "" | "h264" | "copy"
+	Transcode string    `json:"transcode"` // "" | "h264" | "copy" (ffmpeg 档专用)
+	Mode      string    `json:"mode"`      // auto(默认,自动路由) | direct(强制直推) | ffmpeg(强制ffmpeg)
+	ActiveMode string   `json:"active_mode"` // 运行时实际生效: direct/ffmpeg (启动后填充)
 	Room      string    `json:"room"`      // 映射的 LiveKit 房间名
 	IngressID string    `json:"ingress_id"`
 	StreamKey string    `json:"stream_key"`
@@ -84,7 +86,43 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+	// 迁移: 增加 mode 列 (旧库无此列)
+	has, err := s.hasColumn("channels", "mode")
+	if err != nil {
+		return err
+	}
+	if !has {
+		if _, err := s.db.Exec(`ALTER TABLE channels ADD COLUMN mode TEXT DEFAULT 'auto'`); err != nil {
+			return err
+		}
+	}
+	// 兜底: 历史 NULL 行填充默认值
+	if _, err := s.db.Exec(`UPDATE channels SET mode='auto' WHERE mode IS NULL`); err != nil {
+		return err
+	}
 	return nil
+}
+
+// hasColumn 检查表是否存在某列
+func (s *Store) hasColumn(table, col string) (bool, error) {
+	rows, err := s.db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt interface{}
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false, err
+		}
+		if name == col {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
@@ -153,20 +191,23 @@ func (s *Store) DeleteDevice(id string) error {
 
 func (s *Store) SaveChannel(c *Channel) error {
 	_, err := s.db.Exec(
-		`INSERT INTO channels (id,device_id,name,source,status,transcode,room,ingress_id,stream_key,created_at)
-		 VALUES (?,?,?,?,?,?,?,?,?,?)
+		`INSERT INTO channels (id,device_id,name,source,status,transcode,mode,room,ingress_id,stream_key,created_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   device_id=excluded.device_id, name=excluded.name, source=excluded.source,
-		   status=excluded.status, transcode=excluded.transcode, room=excluded.room,
+		   status=excluded.status, transcode=excluded.transcode, mode=excluded.mode,
+		   room=excluded.room,
 		   ingress_id=excluded.ingress_id, stream_key=excluded.stream_key`,
-		c.ID, c.DeviceID, c.Name, c.Source, c.Status, c.Transcode,
+		c.ID, c.DeviceID, c.Name, c.Source, c.Status, c.Transcode, c.Mode,
 		c.Room, c.IngressID, c.StreamKey, c.CreatedAt.Format(time.RFC3339),
 	)
 	return err
 }
 
+const channelCols = `id,device_id,name,source,status,transcode,mode,room,ingress_id,stream_key,created_at`
+
 func (s *Store) ListChannels() ([]Channel, error) {
-	rows, err := s.db.Query(`SELECT id,device_id,name,source,status,transcode,room,ingress_id,stream_key,created_at FROM channels`)
+	rows, err := s.db.Query(`SELECT ` + channelCols + ` FROM channels`)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +217,7 @@ func (s *Store) ListChannels() ([]Channel, error) {
 		var c Channel
 		var ca string
 		if err := rows.Scan(&c.ID, &c.DeviceID, &c.Name, &c.Source, &c.Status,
-			&c.Transcode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
+			&c.Transcode, &c.Mode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339, ca)
@@ -186,11 +227,11 @@ func (s *Store) ListChannels() ([]Channel, error) {
 }
 
 func (s *Store) GetChannel(id string) (*Channel, error) {
-	row := s.db.QueryRow(`SELECT id,device_id,name,source,status,transcode,room,ingress_id,stream_key,created_at FROM channels WHERE id=?`, id)
+	row := s.db.QueryRow(`SELECT `+channelCols+` FROM channels WHERE id=?`, id)
 	var c Channel
 	var ca string
 	if err := row.Scan(&c.ID, &c.DeviceID, &c.Name, &c.Source, &c.Status,
-		&c.Transcode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
+		&c.Transcode, &c.Mode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
 		return nil, err
 	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339, ca)

@@ -150,6 +150,11 @@ func (c *Client) createIngress(input livekit.IngressInput, name, roomName string
 			base = v
 		}
 	}
+	if input == livekit.IngressInput_WHIP_INPUT {
+		if v := os.Getenv("CAMINGRESS_WHIP_BASE_URL"); v != "" {
+			base = v
+		}
+	}
 	pushURL := strings.TrimRight(base, "/")
 	switch input {
 	case livekit.IngressInput_RTMP_INPUT:

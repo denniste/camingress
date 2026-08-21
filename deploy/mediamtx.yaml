@@ -1,0 +1,46 @@
+# MediaMTX 配置 (RTSP 拉流 → WHIP 发布 → LiveKit ingress)
+# 参考: https://github.com/bluenviron/mediamtx
+
+logLevel: info
+
+# RTSP 服务 (接收发布/重曝, 可选)
+rtspAddress: :8554
+
+# HTTP API (供 Go 中间层动态管理 path)
+# 容器内需绑定所有接口 (默认仅 127.0.0.1)
+api: true
+apiAddress: :9997
+
+# WebRTC / WHEP 输出 (可选, 供直接低延迟观看)
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+
+# HLS 输出 (本平台不使用, 关闭省资源)
+hls: false
+
+# RTMP 服务 (本平台不使用, 关闭避免与 ingress 的 1935 冲突)
+rtmp: false
+
+# path 默认配置: 允许任意 path 接收 RTSP 发布 (如测试源直推)
+# 中间层 AddPath 时显式传 source 拉流, 会覆盖此默认
+paths:
+  all_others:
+    source: publisher
+
+# 鉴权: 全权限放行 (生产环境务必收紧: 限制 ips 或改用 authHTTP)
+# 注: v1.20 默认 API 仅 localhost 免鉴权, 容器内跨网络调用会失败, 需显式配置
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+        path:
+      - action: read
+        path:
+      - action: playback
+        path:
+      - action: api
+      - action: metrics
+      - action: pprof

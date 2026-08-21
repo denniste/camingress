@@ -1,7 +1,7 @@
 # 视频汇聚 - 生产部署 (Linux)
 # 启动: docker compose up -d
-# 组件: redis + livekit-server + livekit-ingress + go2rtc + camingress(Go中间层)
-# 媒体链路: 摄像头 RTSP → go2rtc → RTMP → ingress → LiveKit 房间 → 浏览器
+# 组件: redis + livekit-server + livekit-ingress + mediamtx + camingress(Go中间层)
+# 媒体链路: 摄像头 RTSP → mediamtx → WHIP → ingress → LiveKit 房间 → 浏览器
 
 services:
   redis:
@@ -39,23 +39,19 @@ services:
       - redis
       - livekit
 
-  # 可选: go2rtc 提供 WHEP 直看 / RTSP 重曝 (核心推流不依赖它)
-  go2rtc:
-    image: alexxit/go2rtc:1.9.14
+  # mediamtx: RTSP 拉流 → WHIP 发布到 ingress (核心媒体引擎, 替代 ffmpeg/go2rtc)
+  mediamtx:
+    image: bluenviron/mediamtx:latest
     restart: unless-stopped
-    profiles: ["whep"]
     volumes:
-      - ./go2rtc.yaml:/config/go2rtc.yaml
+      - ./mediamtx.yaml:/mediamtx.yml
     ports:
-      - "1984:1984"       # HTTP API (供 Go 中间层管理)
-      - "8554:8554"       # RTSP 服务 (可选)
-      - "8555:8555"       # WebRTC/WHEP (可选, 供直接观看)
-      - "8555:8555/udp"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1984/api/streams"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      - "9997:9997"       # HTTP API (供 Go 中间层动态管理 path)
+      - "8554:8554"       # RTSP 服务 (可选, 重曝/测试源)
+      - "8889:8889"       # WebRTC/WHEP 直看 (可选)
+      - "8889:8889/udp"
+      - "8189:8189/udp"   # WebRTC ICE UDP
+    # 注: 官方镜像无 shell/wget, 无法用容器内健康检查; 依赖 camingress 启动时 WaitReady 轮询 API
 
   camingress:
     build: ../server
@@ -69,7 +65,11 @@ services:
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
       CAMINGRESS_SECRET: ${CAMINGRESS_SECRET:-}
       CAMINGRESS_API_KEY: ${CAMINGRESS_API_KEY:-}
-      # 容器内 ffmpeg 访问 ingress 的 RTMP 端口 (内部主机名)
+      # mediamtx HTTP API 地址 (容器内主机名)
+      CAMINGRESS_MTX_URL: http://mediamtx:9997
+      # WHIP 发布目标: ingress 容器内 WHIP 端点 (stream key 由 LiveKit 生成)
+      CAMINGRESS_WHIP_BASE_URL: http://ingress:8080/whip
+      # 容器内 ffmpeg 访问 ingress 的 RTMP 端口 (ffmpeg 回退档)
       CAMINGRESS_RTMP_BASE_URL: rtmp://ingress:1935
     command: -db /data/camingress.db
     volumes:
@@ -81,6 +81,8 @@ services:
         condition: service_started
       ingress:
         condition: service_started
+      mediamtx:
+        condition: service_healthy
 
 volumes:
   redis-data:

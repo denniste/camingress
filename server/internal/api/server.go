@@ -14,6 +14,7 @@ import (
 
 	"github.com/denniste/camingress/server/internal/discovery"
 	"github.com/denniste/camingress/server/internal/livekit"
+	"github.com/denniste/camingress/server/internal/mediamtx"
 	"github.com/denniste/camingress/server/internal/push"
 	"github.com/denniste/camingress/server/internal/store"
 )
@@ -24,6 +25,7 @@ type Deps struct {
 	Push      *push.Manager
 	LiveKit   *livekit.Client
 	Discovery *discovery.Discoverer
+	MediaMTX  *mediamtx.Client
 }
 
 // Server API 服务
@@ -141,6 +143,9 @@ func (s *Server) handleCreateChannel(w http.ResponseWriter, r *http.Request) {
 	if c.Status == "" {
 		c.Status = "stopped"
 	}
+	if c.Mode == "" {
+		c.Mode = "auto" // auto = MediaMTX WHIP 直通 (编码不兼容时可由 ingress 转码)
+	}
 	if c.Room == "" {
 		c.Room = sanitizeRoom(c.Name)
 	}
@@ -177,6 +182,9 @@ func (s *Server) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	if in.Transcode != "" {
 		cur.Transcode = in.Transcode
 	}
+	if in.Mode != "" {
+		cur.Mode = in.Mode
+	}
 	if in.Room != "" {
 		cur.Room = sanitizeRoom(in.Room)
 	}
@@ -187,6 +195,9 @@ func (s *Server) handleUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, cur, 200)
 }
 
+// handleStartChannel 启动通道 (三档路由)
+//   Mode=auto(默认)/direct → MediaMTX WHIP 链路: RTSP → mediamtx(透传) → WHIP → ingress → 房间
+//   Mode=ffmpeg            → 回退链路: RTSP → ffmpeg(转码) → RTMP → ingress → 房间
 func (s *Server) handleStartChannel(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	c, err := s.deps.Store.GetChannel(id)
@@ -194,7 +205,7 @@ func (s *Server) handleStartChannel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"error": "通道不存在"}, 404)
 		return
 	}
-	if c.Status == "active" && c.IngressID != "" {
+	if c.Status == "active" && (c.IngressID != "" || c.ActiveMode != "") {
 		writeJSON(w, map[string]string{"error": "通道已启动"}, 409)
 		return
 	}
@@ -202,6 +213,47 @@ func (s *Server) handleStartChannel(w http.ResponseWriter, r *http.Request) {
 		c.Room = sanitizeRoom(c.Name)
 	}
 
+	if c.Mode == "ffmpeg" {
+		s.startFFmpeg(c, w)
+		return
+	}
+	s.startDirect(c, w)
+}
+
+// startDirect MediaMTX 直通链路 (H.264/H.265 摄像头首选, 无重编码)
+// RTSP → mediamtx(拉流+透传) → RTMP → ingress → 房间
+// 注: 原计划 WHIP forward, 但 LiveKit ingress 的 WHIP 仅接受精确 fmtp 匹配的
+//     H264(42001f)/VP8 offer, mediamtx 透传 SDP 无法满足 → 改用 RTMP forward
+func (s *Server) startDirect(c *store.Channel, w http.ResponseWriter) {
+	// 1. 创建 LiveKit RTMP ingress
+	ing, err := s.deps.LiveKit.CreateRTMPIngress("ing-"+c.ID, c.Room)
+	if err != nil {
+		writeJSON(w, map[string]string{"error": "创建 ingress 失败: " + err.Error()}, 500)
+		return
+	}
+
+	// 2. mediamtx path: RTSP 拉流 → RTMP 转发到 ingress (v1.20 配置即生效)
+	//    ing.URL = rtmp://ingress:1935/live/{stream_key} → mediamtx 需 #key 语法
+	if err := s.deps.MediaMTX.AddPath(c.ID, c.Source, toRTMPForward(ing.URL)); err != nil {
+		_ = s.deps.LiveKit.DeleteIngress(ing.IngressID)
+		writeJSON(w, map[string]string{"error": "mediamtx 配置失败: " + err.Error()}, 500)
+		return
+	}
+
+	c.Status = "active"
+	c.ActiveMode = "direct"
+	c.IngressID = ing.IngressID
+	c.StreamKey = ing.StreamKey
+	c.Room = ing.RoomName
+	if err := s.deps.Store.SaveChannel(c); err != nil {
+		writeJSON(w, map[string]string{"error": err.Error()}, 500)
+		return
+	}
+	writeJSON(w, c, 200)
+}
+
+// startFFmpeg 回退链路 (RTMP ingress + ffmpeg 子进程, 用于不兼容编码/老设备)
+func (s *Server) startFFmpeg(c *store.Channel, w http.ResponseWriter) {
 	// 1. 创建 LiveKit RTMP ingress
 	ing, err := s.deps.LiveKit.CreateRTMPIngress("ing-"+c.ID, c.Room)
 	if err != nil {
@@ -217,6 +269,7 @@ func (s *Server) handleStartChannel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.Status = "active"
+	c.ActiveMode = "ffmpeg"
 	c.IngressID = ing.IngressID
 	c.StreamKey = ing.StreamKey
 	c.Room = ing.RoomName
@@ -227,6 +280,7 @@ func (s *Server) handleStartChannel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, c, 200)
 }
 
+// handleStopChannel 停止通道 (按实际生效模式清理)
 func (s *Server) handleStopChannel(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	c, err := s.deps.Store.GetChannel(id)
@@ -234,11 +288,9 @@ func (s *Server) handleStopChannel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"error": "通道不存在"}, 404)
 		return
 	}
-	s.deps.Push.Stop(c.ID)
-	if c.IngressID != "" {
-		_ = s.deps.LiveKit.DeleteIngress(c.IngressID)
-	}
+	s.stopChannel(c)
 	c.Status = "stopped"
+	c.ActiveMode = ""
 	c.IngressID = ""
 	c.StreamKey = ""
 	if err := s.deps.Store.SaveChannel(c); err != nil {
@@ -248,13 +300,23 @@ func (s *Server) handleStopChannel(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, c, 200)
 }
 
+// stopChannel 按模式停止媒体链路
+func (s *Server) stopChannel(c *store.Channel) {
+	switch c.ActiveMode {
+	case "ffmpeg":
+		s.deps.Push.Stop(c.ID)
+	default: // direct / 未知
+		s.deps.MediaMTX.DeletePath(c.ID)
+	}
+	if c.IngressID != "" {
+		_ = s.deps.LiveKit.DeleteIngress(c.IngressID)
+	}
+}
+
 func (s *Server) handleDeleteChannel(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	s.deps.Push.Stop(id)
 	if c, err := s.deps.Store.GetChannel(id); err == nil {
-		if c.IngressID != "" {
-			_ = s.deps.LiveKit.DeleteIngress(c.IngressID)
-		}
+		s.stopChannel(c)
 	}
 	if err := s.deps.Store.DeleteChannel(id); err != nil {
 		writeJSON(w, map[string]string{"error": err.Error()}, 500)
@@ -307,6 +369,31 @@ func newID(prefix string) string {
 		prefix += "-"
 	}
 	return prefix + strconv.FormatInt(time.Now().UnixNano(), 36)
+}
+
+// toRTMPForward 将 ingress 返回的 RTMP URL 转为 MediaMTX forward 语法
+//   rtmp://host:port/live/{key} → rtmp://host:port/live#{key} (MediaMTX 用 # 分隔 stream key)
+func toRTMPForward(pushURL string) string {
+	u := strings.TrimRight(pushURL, "/")
+	idx := strings.LastIndex(u, "/")
+	if idx > 0 {
+		return u[:idx] + "#" + u[idx+1:]
+	}
+	return u
+}
+
+// toWhipDest 将 ingress 返回的 HTTP 发布 URL 转为 MediaMTX dest 格式
+//   http://host:port/whip/{key}  → whip://host:port/whip/{key}
+//   https://host:port/whip/{key} → whips://host:port/whip/{key}
+func toWhipDest(pushURL string) string {
+	u := strings.TrimRight(pushURL, "/")
+	switch {
+	case strings.HasPrefix(u, "https://"):
+		return "whips://" + strings.TrimPrefix(u, "https://")
+	case strings.HasPrefix(u, "http://"):
+		return "whip://" + strings.TrimPrefix(u, "http://")
+	}
+	return u
 }
 
 // sanitizeRoom 将名称转为合法的 LiveKit 房间名 ([a-z0-9_-])
