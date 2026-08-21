@@ -8,16 +8,16 @@ import (
 	"flag"
 	"log"
 
-	"videohub/server/internal/api"
-	"videohub/server/internal/discovery"
-	"videohub/server/internal/livekit"
-	"videohub/server/internal/push"
-	"videohub/server/internal/store"
+	"github.com/denniste/camingress/server/internal/api"
+	"github.com/denniste/camingress/server/internal/discovery"
+	"github.com/denniste/camingress/server/internal/livekit"
+	"github.com/denniste/camingress/server/internal/push"
+	"github.com/denniste/camingress/server/internal/store"
 )
 
 var (
 	addr   = flag.String("addr", ":8080", "WebAPI 监听地址")
-	dbPath = flag.String("db", "videohub.db", "SQLite 数据库路径")
+	dbPath = flag.String("db", "camingress.db", "SQLite 数据库路径")
 )
 
 func main() {

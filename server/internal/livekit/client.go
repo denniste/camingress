@@ -143,10 +143,10 @@ func (c *Client) createIngress(input livekit.IngressInput, name, roomName string
 	// 需自行拼接推流路径与 stream_key:
 	//   RTMP: {base}/live/{stream_key}
 	//   WHIP: {base}/whip/{stream_key}
-	// 可用 VIDEOHUB_RTMP_BASE_URL 覆盖 base (如原生 ffmpeg 无法解析容器内主机名时)
+	// 可用 CAMINGRESS_RTMP_BASE_URL 覆盖 base (如原生 ffmpeg 无法解析容器内主机名时)
 	base := info.Url
 	if input == livekit.IngressInput_RTMP_INPUT {
-		if v := os.Getenv("VIDEOHUB_RTMP_BASE_URL"); v != "" {
+		if v := os.Getenv("CAMINGRESS_RTMP_BASE_URL"); v != "" {
 			base = v
 		}
 	}
@@ -185,7 +185,7 @@ func (c *Client) ingressClient() livekit.Ingress {
 // ingressCtx 构造带 ingress 管理权限 JWT 的上下文
 func (c *Client) ingressCtx() (context.Context, error) {
 	at := auth.NewAccessToken(c.cfg.APIKey, c.cfg.APISecret).
-		SetIdentity("videohub").
+		SetIdentity("camingress").
 		SetValidFor(time.Minute)
 	at.SetVideoGrant(&auth.VideoGrant{IngressAdmin: true})
 	token, err := at.ToJWT()

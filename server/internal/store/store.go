@@ -1,5 +1,5 @@
 // SQLite 存储层: 设备表 / 通道表
-// 设备凭证 (密码) 使用 AES-GCM 加密后落盘, 密钥来自环境变量 VIDEHUB_SECRET
+// 设备凭证 (密码) 使用 AES-GCM 加密后落盘, 密钥来自环境变量 CAMINGRESS_SECRET
 package store
 
 import (
@@ -204,11 +204,11 @@ func (s *Store) DeleteChannel(id string) error {
 
 // ── 凭证加密 (AES-256-GCM) ──
 
-// key 由 VIDEHUB_SECRET 派生, 未设置时使用开发默认值 (生产必须设置)
+// key 由 CAMINGRESS_SECRET 派生, 未设置时使用开发默认值 (生产必须设置)
 func (s *Store) key() []byte {
-	secret := os.Getenv("VIDEHUB_SECRET")
+	secret := os.Getenv("CAMINGRESS_SECRET")
 	if secret == "" {
-		secret = "videohub-dev-secret"
+		secret = "camingress-dev-secret"
 	}
 	sum := sha256.Sum256([]byte(secret))
 	return sum[:]

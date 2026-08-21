@@ -1,5 +1,5 @@
 # Go
-server/videohub
+server/camingress
 server/*.db
 server/*.exe
 

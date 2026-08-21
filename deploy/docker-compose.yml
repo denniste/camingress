@@ -1,6 +1,6 @@
 # 视频汇聚 - 生产部署 (Linux)
 # 启动: docker compose up -d
-# 组件: redis + livekit-server + livekit-ingress + go2rtc + videohub(Go中间层)
+# 组件: redis + livekit-server + livekit-ingress + go2rtc + camingress(Go中间层)
 # 媒体链路: 摄像头 RTSP → go2rtc → RTMP → ingress → LiveKit 房间 → 浏览器
 
 services:
@@ -57,23 +57,23 @@ services:
       timeout: 3s
       retries: 5
 
-  videohub:
+  camingress:
     build: ../server
     restart: unless-stopped
     environment:
       # 浏览器可达的 LiveKit 地址 (生产设为公网 wss://域名 或 ws://IP:7880)
       LIVEKIT_URL: ${LIVEKIT_URL:-ws://localhost:7880}
-      # videohub 容器内部访问 livekit-server 的 twirp API
+      # camingress 容器内部访问 livekit-server 的 twirp API
       LIVEKIT_HTTP_URL: http://livekit:7880
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
-      VIDEHUB_SECRET: ${VIDEHUB_SECRET:-}
-      VIDEHUB_API_KEY: ${VIDEHUB_API_KEY:-}
+      CAMINGRESS_SECRET: ${CAMINGRESS_SECRET:-}
+      CAMINGRESS_API_KEY: ${CAMINGRESS_API_KEY:-}
       # 容器内 ffmpeg 访问 ingress 的 RTMP 端口 (内部主机名)
-      VIDEOHUB_RTMP_BASE_URL: rtmp://ingress:1935
-    command: -db /data/videohub.db
+      CAMINGRESS_RTMP_BASE_URL: rtmp://ingress:1935
+    command: -db /data/camingress.db
     volumes:
-      - videohub-data:/data
+      - camingress-data:/data
     ports:
       - "8080:8080"       # WebAPI
     depends_on:
@@ -84,4 +84,4 @@ services:
 
 volumes:
   redis-data:
-  videohub-data:
+  camingress-data:

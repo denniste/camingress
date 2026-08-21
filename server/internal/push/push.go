@@ -17,9 +17,9 @@ type Manager struct {
 	ffmpegBin string
 }
 
-// New 创建管理器 (ffmpeg 二进制路径可用 VIDEHUB_FFMPEG 覆盖)
+// New 创建管理器 (ffmpeg 二进制路径可用 CAMINGRESS_FFMPEG 覆盖)
 func New() *Manager {
-	bin := os.Getenv("VIDEOHUB_FFMPEG")
+	bin := os.Getenv("CAMINGRESS_FFMPEG")
 	if bin == "" {
 		bin = "ffmpeg"
 	}

@@ -39,7 +39,7 @@ var probeTemplate = `<?xml version="1.0" encoding="UTF-8"?>
   xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"
   xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
   <e:Header>
-    <w:MessageID>uuid:videohub-probe-1</w:MessageID>
+    <w:MessageID>uuid:camingress-probe-1</w:MessageID>
     <w:To e:mustUnderstand="true">urn:schemas-xmlsoap-org:ws:2005:04:discovery</w:To>
     <w:Action e:mustUnderstand="true">http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe</w:Action>
   </e:Header>
@@ -153,7 +153,7 @@ func rtspReachable(url string) bool {
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
 
-	req := "OPTIONS " + url + " RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: videohub\r\n\r\n"
+	req := "OPTIONS " + url + " RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: camingress\r\n\r\n"
 	if _, err := conn.Write([]byte(req)); err != nil {
 		return false
 	}

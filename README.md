@@ -1,7 +1,8 @@
-# 视频汇聚 (LiveKit Video Aggregation Platform)
+# CamIngress — 把 RTSP 摄像头汇聚进 LiveKit 房间
 
 > 对标 Upwork 真实需求："WebRTC, LiveKit, Live Streaming, FFmpeg, Video Surveillance Integration"
 > 定位：跨区域视频汇聚 + 协同平台——摄像头画面进 LiveKit 房间，支持会议/讨论组/监控集成
+> 架构：Camera(ingress) → LiveKit 房间 → WebRTC。本项目即「RTSP 摄像头版 LiveKit ingress」
 
 ## 项目目标
 
@@ -40,7 +41,7 @@ RTSP 摄像头 ──► ffmpeg (Go 子进程管理) ──RTMP──► LiveKit
 ## 目录结构
 
 ```
-D:\LiveKit\
+D:\CamIngress\
 ├── docs\
 │   └── requirements.md       # 详细需求（含 Upwork 原始需求）
 ├── server\                   # Go 中间层服务
@@ -60,7 +61,7 @@ D:\LiveKit\
 │   │   └── App.vue
 │   └── package.json
 └── deploy\
-    ├── docker-compose.yml    # 生产部署（redis+livekit+ingress+go2rtc+videohub）
+    ├── docker-compose.yml    # 生产部署（redis+livekit+ingress+go2rtc+camingress）
     ├── livekit.yaml          # LiveKit 配置
     └── go2rtc.yaml           # go2rtc 配置
 ```
@@ -72,7 +73,7 @@ D:\LiveKit\
 ```bash
 cd deploy
 # 生产环境务必设置密钥与公网地址
-export LIVEKIT_URL=wss://video.example.com LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=secret VIDEHUB_SECRET=change-me
+export LIVEKIT_URL=wss://video.example.com LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=secret CAMINGRESS_SECRET=change-me
 docker compose up -d
 # WebAPI: http://<host>:8080 ; LiveKit: ws://<host>:7880
 ```
@@ -89,15 +90,15 @@ docker compose up -d redis livekit ingress
 # 2. 启动 Go 中间层 (原生)
 cd ../server
 go mod tidy
-go run main.go -db videohub.db
+go run main.go -db camingress.db
 # 环境变量 (默认值已适配 docker compose 端口映射):
 #   LIVEKIT_URL=ws://localhost:7880        (浏览器信令地址)
 #   LIVEKIT_HTTP_URL=http://localhost:7880 (ingress/egress 管理 twirp API)
 #   LIVEKIT_API_KEY=devkey
 #   LIVEKIT_API_SECRET=secret
-#   VIDEOHUB_RTMP_BASE_URL=rtmp://localhost:1935  (原生 ffmpeg 访问 ingress 的地址)
-#   VIDEHUB_SECRET=       (密码加密密钥, 生产必填)
-#   VIDEHUB_API_KEY=      (可选, 开启 WebAPI 鉴权)
+#   CAMINGRESS_RTMP_BASE_URL=rtmp://localhost:1935  (原生 ffmpeg 访问 ingress 的地址)
+#   CAMINGRESS_SECRET=       (密码加密密钥, 生产必填)
+#   CAMINGRESS_API_KEY=      (可选, 开启 WebAPI 鉴权)
 
 # 3. 启动 Vue 客户端
 cd ../web
@@ -119,10 +120,10 @@ npm run dev
 | `LIVEKIT_API_KEY` | `devkey` | LiveKit API key |
 | `LIVEKIT_API_SECRET` | `secret` | LiveKit API secret |
 | `LIVEKIT_HTTP_URL` | 由 `LIVEKIT_URL` 推导 | livekit-server 的 twirp API 地址（ingress/egress 管理） |
-| `VIDEOHUB_RTMP_BASE_URL` | 使用 ingress 返回的 base | ffmpeg 访问 ingress 的 RTMP 基础地址 |
-| `VIDEOHUB_FFMPEG` | `ffmpeg` | ffmpeg 二进制路径（不在 PATH 时指定） |
-| `VIDEHUB_SECRET` | (开发默认值) | 设备密码加密密钥，**生产必填** |
-| `VIDEHUB_API_KEY` | (空) | 设置后 WebAPI 需 `Authorization: Bearer` 鉴权 |
+| `CAMINGRESS_RTMP_BASE_URL` | 使用 ingress 返回的 base | ffmpeg 访问 ingress 的 RTMP 基础地址 |
+| `CAMINGRESS_FFMPEG` | `ffmpeg` | ffmpeg 二进制路径（不在 PATH 时指定） |
+| `CAMINGRESS_SECRET` | (开发默认值) | 设备密码加密密钥，**生产必填** |
+| `CAMINGRESS_API_KEY` | (空) | 设置后 WebAPI 需 `Authorization: Bearer` 鉴权 |
 
 ## 里程碑
 

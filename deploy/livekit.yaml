@@ -1,5 +1,5 @@
 # LiveKit Server 配置 (Linux/Docker)
-# 注意: 生产环境务必替换 devkey/secret, 并设置 VIDEHUB_SECRET
+# 注意: 生产环境务必替换 devkey/secret, 并设置 CAMINGRESS_SECRET
 port: 7880
 bind_addresses:
   - 0.0.0.0

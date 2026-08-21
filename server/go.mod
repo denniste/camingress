@@ -1,4 +1,4 @@
-module videohub/server
+module github.com/denniste/camingress/server
 
 go 1.23.0
 

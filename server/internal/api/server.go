@@ -12,10 +12,10 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"videohub/server/internal/discovery"
-	"videohub/server/internal/livekit"
-	"videohub/server/internal/push"
-	"videohub/server/internal/store"
+	"github.com/denniste/camingress/server/internal/discovery"
+	"github.com/denniste/camingress/server/internal/livekit"
+	"github.com/denniste/camingress/server/internal/push"
+	"github.com/denniste/camingress/server/internal/store"
 )
 
 // Deps 服务依赖
@@ -342,9 +342,9 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 // apiKeyMiddleware 可选 API 鉴权
-// 设置 VIDEHUB_API_KEY 后, /api/* (除 /api/health) 需携带 Bearer token
+// 设置 CAMINGRESS_API_KEY 后, /api/* (除 /api/health) 需携带 Bearer token
 func apiKeyMiddleware(next http.Handler) http.Handler {
-	key := os.Getenv("VIDEHUB_API_KEY")
+	key := os.Getenv("CAMINGRESS_API_KEY")
 	if key == "" {
 		return next // 未配置则关闭鉴权 (开发模式)
 	}
