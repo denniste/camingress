@@ -1,0 +1,19 @@
+# go2rtc 引擎配置 (sidecar, 由 Go 中间层通过 HTTP API 管理)
+# 参考: https://github.com/AlexxIT/go2rtc
+
+log:
+  level: info
+
+# HTTP API (默认 :1984), 供 videohub 中间层调用
+api:
+  listen: ":1984"
+  origin: "*"
+
+# WebRTC / WHEP 输出 (可选, 供直接低延迟观看)
+webrtc:
+  listen: ":8555"
+
+# RTSP 服务 (可选, 可将任意流重新暴露为 RTSP)
+rtsp:
+  listen: ":8554"
+streams:

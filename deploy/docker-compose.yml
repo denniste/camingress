@@ -1,0 +1,87 @@
+# 视频汇聚 - 生产部署 (Linux)
+# 启动: docker compose up -d
+# 组件: redis + livekit-server + livekit-ingress + go2rtc + videohub(Go中间层)
+# 媒体链路: 摄像头 RTSP → go2rtc → RTMP → ingress → LiveKit 房间 → 浏览器
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    ports:
+      - "7880:7880"       # 信令 (HTTP/WS)
+      - "7881:7881"       # WebRTC TCP
+      - "7882-7886:7882-7886/udp"  # WebRTC UDP
+    depends_on:
+      - redis
+
+  ingress:
+    image: livekit/ingress:latest
+    restart: unless-stopped
+    command: --config /etc/ingress.yaml
+    volumes:
+      - ./ingress.yaml:/etc/ingress.yaml
+    ports:
+      - "1935:1935"       # RTMP ingress
+      - "8081:8080"       # HTTP (WHIP ingress)
+    depends_on:
+      - redis
+      - livekit
+
+  # 可选: go2rtc 提供 WHEP 直看 / RTSP 重曝 (核心推流不依赖它)
+  go2rtc:
+    image: alexxit/go2rtc:1.9.14
+    restart: unless-stopped
+    profiles: ["whep"]
+    volumes:
+      - ./go2rtc.yaml:/config/go2rtc.yaml
+    ports:
+      - "1984:1984"       # HTTP API (供 Go 中间层管理)
+      - "8554:8554"       # RTSP 服务 (可选)
+      - "8555:8555"       # WebRTC/WHEP (可选, 供直接观看)
+      - "8555:8555/udp"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1984/api/streams"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  videohub:
+    build: ../server
+    restart: unless-stopped
+    environment:
+      # 浏览器可达的 LiveKit 地址 (生产设为公网 wss://域名 或 ws://IP:7880)
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://localhost:7880}
+      # videohub 容器内部访问 livekit-server 的 twirp API
+      LIVEKIT_HTTP_URL: http://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+      VIDEHUB_SECRET: ${VIDEHUB_SECRET:-}
+      VIDEHUB_API_KEY: ${VIDEHUB_API_KEY:-}
+      # 容器内 ffmpeg 访问 ingress 的 RTMP 端口 (内部主机名)
+      VIDEOHUB_RTMP_BASE_URL: rtmp://ingress:1935
+    command: -db /data/videohub.db
+    volumes:
+      - videohub-data:/data
+    ports:
+      - "8080:8080"       # WebAPI
+    depends_on:
+      livekit:
+        condition: service_started
+      ingress:
+        condition: service_started
+
+volumes:
+  redis-data:
+  videohub-data:

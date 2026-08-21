@@ -1,0 +1,146 @@
+{
+  "server/go.mod": {
+    "mtime": 1787255502.5477567,
+    "seen": 1787263338.5083606,
+    "ast_hash": "a89bd3f047710d759c5044570212d8a3",
+    "semantic_hash": "a89bd3f047710d759c5044570212d8a3"
+  },
+  "server/internal/api/server.go": {
+    "mtime": 1787258810.4934087,
+    "seen": 1787263338.5083606,
+    "ast_hash": "7b0bd3fcf8f021dceb66ca30aae4ccb4",
+    "semantic_hash": "7b0bd3fcf8f021dceb66ca30aae4ccb4"
+  },
+  "server/internal/discovery/onvif.go": {
+    "mtime": 1787254609.9443152,
+    "seen": 1787263338.5083606,
+    "ast_hash": "d6516b68e25654b2b046cb73b55a571c",
+    "semantic_hash": "d6516b68e25654b2b046cb73b55a571c"
+  },
+  "server/internal/livekit/client.go": {
+    "mtime": 1787258787.2696378,
+    "seen": 1787263338.5083606,
+    "ast_hash": "228c63d09732db034eab5a42747ae03b",
+    "semantic_hash": "228c63d09732db034eab5a42747ae03b"
+  },
+  "server/internal/push/push.go": {
+    "mtime": 1787258778.222407,
+    "seen": 1787263338.5083606,
+    "ast_hash": "2884227b99902c0e1747316cea6deba3",
+    "semantic_hash": "2884227b99902c0e1747316cea6deba3"
+  },
+  "server/internal/rtsp/engine.go": {
+    "mtime": 1787257711.4379542,
+    "seen": 1787263338.5083606,
+    "ast_hash": "2dc000811a40e66727f929a9a095cd3a",
+    "semantic_hash": "2dc000811a40e66727f929a9a095cd3a"
+  },
+  "server/internal/store/store.go": {
+    "mtime": 1787254537.7141924,
+    "seen": 1787263338.5083606,
+    "ast_hash": "75b890d87620756abfc568a3143fe89e",
+    "semantic_hash": "75b890d87620756abfc568a3143fe89e"
+  },
+  "server/main.go": {
+    "mtime": 1787258825.0267327,
+    "seen": 1787263338.5083606,
+    "ast_hash": "1adc0707376632e91311f71b7cfd5249",
+    "semantic_hash": "1adc0707376632e91311f71b7cfd5249"
+  },
+  "web/package.json": {
+    "mtime": 1787176439.261388,
+    "seen": 1787263338.5083606,
+    "ast_hash": "02a4790b0955f63bcdbefbcf8ec3533d",
+    "semantic_hash": "02a4790b0955f63bcdbefbcf8ec3533d"
+  },
+  "web/src/App.vue": {
+    "mtime": 1787254677.1454127,
+    "seen": 1787263338.5083606,
+    "ast_hash": "9665bea6bc5858be67ca67ec0b6ddd28",
+    "semantic_hash": "9665bea6bc5858be67ca67ec0b6ddd28"
+  },
+  "web/src/api/client.js": {
+    "mtime": 1787254614.6140528,
+    "seen": 1787263338.5083606,
+    "ast_hash": "95f9682c3527f2a05a1e69ae96f03f8a",
+    "semantic_hash": "95f9682c3527f2a05a1e69ae96f03f8a"
+  },
+  "web/src/main.js": {
+    "mtime": 1787254672.5999174,
+    "seen": 1787263338.5083606,
+    "ast_hash": "3a025a25455651c2b45c6781475ca951",
+    "semantic_hash": "3a025a25455651c2b45c6781475ca951"
+  },
+  "web/src/views/Channels.vue": {
+    "mtime": 1787254626.0971637,
+    "seen": 1787263338.5083606,
+    "ast_hash": "17a7f9f9aa1dae99cf739735bcdae9fa",
+    "semantic_hash": "17a7f9f9aa1dae99cf739735bcdae9fa"
+  },
+  "web/src/views/Discovery.vue": {
+    "mtime": 1787254633.8915236,
+    "seen": 1787263338.5083606,
+    "ast_hash": "4b5d6b952ad8077263212d7c300ff0ff",
+    "semantic_hash": "4b5d6b952ad8077263212d7c300ff0ff"
+  },
+  "web/src/views/Meeting.vue": {
+    "mtime": 1787254669.5267246,
+    "seen": 1787263338.5083606,
+    "ast_hash": "2b50d684e891eaeebdfaddae44205068",
+    "semantic_hash": "2b50d684e891eaeebdfaddae44205068"
+  },
+  "web/src/views/Player.vue": {
+    "mtime": 1787254643.5511522,
+    "seen": 1787263338.5083606,
+    "ast_hash": "2fad1b9d442406d489b4c65f87f01b93",
+    "semantic_hash": "2fad1b9d442406d489b4c65f87f01b93"
+  },
+  "web/vite.config.js": {
+    "mtime": 1787176445.189993,
+    "seen": 1787263338.5083606,
+    "ast_hash": "b1e171cf8da8e52b67033de12a2dcd7c",
+    "semantic_hash": "b1e171cf8da8e52b67033de12a2dcd7c"
+  },
+  "README.md": {
+    "mtime": 1787258987.3312447,
+    "seen": 1787263338.5083606,
+    "ast_hash": "64d3c8f3a109c0eda1dcdba16686e270",
+    "semantic_hash": "64d3c8f3a109c0eda1dcdba16686e270"
+  },
+  "deploy/docker-compose.yml": {
+    "mtime": 1787258843.4545848,
+    "seen": 1787263338.5083606,
+    "ast_hash": "5178c99d9a158c0e781d0ec4db412752",
+    "semantic_hash": "5178c99d9a158c0e781d0ec4db412752"
+  },
+  "deploy/go2rtc.yaml": {
+    "mtime": 1787258863.768676,
+    "seen": 1787263338.5083606,
+    "ast_hash": "63b7afe3b1d43af66294f3545cb2f149",
+    "semantic_hash": "63b7afe3b1d43af66294f3545cb2f149"
+  },
+  "deploy/ingress.yaml": {
+    "mtime": 1787257539.1944227,
+    "seen": 1787263338.5083606,
+    "ast_hash": "80be2f0450a7094ed8312172d802e08c",
+    "semantic_hash": "80be2f0450a7094ed8312172d802e08c"
+  },
+  "deploy/livekit.yaml": {
+    "mtime": 1787257265.8195856,
+    "seen": 1787263338.5083606,
+    "ast_hash": "1a0079f91e0e2787d0cdca02f7279f87",
+    "semantic_hash": "1a0079f91e0e2787d0cdca02f7279f87"
+  },
+  "docs/requirements.md": {
+    "mtime": 1787258995.3626387,
+    "seen": 1787263338.5083606,
+    "ast_hash": "3e3f9c05989c8877e5960450c13d32ab",
+    "semantic_hash": "3e3f9c05989c8877e5960450c13d32ab"
+  },
+  "web/index.html": {
+    "mtime": 1787176451.511121,
+    "seen": 1787263338.5083606,
+    "ast_hash": "cee0500e55db0dfcdd8579fbb5b3cc07",
+    "semantic_hash": "cee0500e55db0dfcdd8579fbb5b3cc07"
+  }
+}

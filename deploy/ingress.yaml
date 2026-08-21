@@ -1,0 +1,13 @@
+# LiveKit Ingress 服务配置
+api_key: devkey
+api_secret: secret
+ws_url: ws://livekit:7880
+
+redis:
+  address: redis:6379
+
+rtmp_port: 1935
+whip_port: 8080
+
+logging:
+  level: info

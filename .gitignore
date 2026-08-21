@@ -1,0 +1,16 @@
+# Go
+server/videohub
+server/*.db
+server/*.exe
+
+# Node
+web/node_modules/
+web/dist/
+
+# 环境
+.env
+*.log
+
+# graphify 分析缓存
+graphify-out/cache/
+graphify-out/.graphify_*

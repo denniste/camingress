@@ -1,0 +1,28 @@
+# LiveKit Server 配置 (Linux/Docker)
+# 注意: 生产环境务必替换 devkey/secret, 并设置 VIDEHUB_SECRET
+port: 7880
+bind_addresses:
+  - 0.0.0.0
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 7882
+  port_range_end: 7886
+  use_external_ip: false
+  # 本机局域网 IP, 供浏览器做 WebRTC 媒体面 (Docker Desktop 端口已发布)
+  node_ip: 192.168.31.50
+
+redis:
+  address: redis:6379
+
+keys:
+  devkey: secret
+
+ingress:
+  # go2rtc (同 compose 网络内) 转推 RTMP 到 ingress
+  rtmp_base_url: "rtmp://ingress:1935"
+  # 浏览器/编码器 WHIP 直推地址 (同网络内部)
+  whip_base_url: "http://ingress:8080"
+
+logging:
+  level: info
