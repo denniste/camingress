@@ -9,19 +9,19 @@ rtc:
   port_range_start: 7882
   port_range_end: 7886
   use_external_ip: false
-  # 本机局域网 IP, 供浏览器做 WebRTC 媒体面 (Docker Desktop 端口已发布)
-  node_ip: 192.168.31.50
+  # 原生 livekit-server (Windows): 监听 0.0.0.0, 浏览器直连 LAN IP (无 Docker 转发限制)
+  node_ip: 192.168.31.104
 
 redis:
-  address: redis:6379
+  # 原生模式: 容器 redis 的宿主映射端口
+  address: localhost:6379
 
 keys:
   devkey: secret
 
 ingress:
-  # go2rtc (同 compose 网络内) 转推 RTMP 到 ingress
+  # 原生 livekit-server (Windows) 时, ingress 容器经 host.docker.internal 访问
   rtmp_base_url: "rtmp://ingress:1935"
-  # 浏览器/编码器 WHIP 直推地址 (同网络内部)
   whip_base_url: "http://ingress:8080"
 
 logging:

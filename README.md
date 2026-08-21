@@ -96,19 +96,27 @@ docker compose up -d
 # WebAPI: http://<host>:8080 ; LiveKit: ws://<host>:7880
 ```
 
-### 研发 (Windows + 原生 Go + 原生 mediamtx)
+### 研发 (Windows + 原生 Go + 原生 mediamtx + 原生 livekit-server)
+
+> ⚠️ **Docker Desktop (WSL2) 的 localhost UDP 端口转发不可靠**（WebRTC 媒体面 UDP 不通，
+> 浏览器报 "could not establish pc connection"）→ **Windows 研发模式必须原生跑 livekit-server**。
 
 ```bash
-# 1. 启动依赖 (Redis + LiveKit + ingress) —— 全部容器化
+# 1. 启动依赖 (Redis + ingress) —— 容器化
 cd deploy
-docker compose up -d redis livekit ingress
+docker compose up -d redis ingress
 
-# 2. 启动 mediamtx (原生单二进制, 研发模式; 生产用容器)
+# 2. 启动 livekit-server (原生单二进制, 研发模式)
+#    下载: https://github.com/livekit/livekit/releases (windows_amd64)
+#    运行: cd D:/livekit-native && ./livekit-server.exe --config D:/CamIngress/deploy/livekit.yaml
+#    (livekit.yaml 已配置 redis=localhost:6379, node_ip=本机 LAN IP)
+
+# 3. 启动 mediamtx (原生单二进制, 研发模式; 生产用容器)
 #    下载: https://github.com/bluenviron/mediamtx/releases (windows_amd64)
 #    配置: 使用 deploy/mediamtx.yaml (路径改 D:/mediamtx-native/mediamtx.yml)
 #    运行: cd D:/mediamtx-native && ./mediamtx.exe
 
-# 3. 启动 Go 中间层 (原生)
+# 4. 启动 Go 中间层 (原生)
 cd ../server
 go run main.go -db camingress.db
 # 环境变量 (默认值已适配 docker compose 端口映射):
@@ -120,17 +128,16 @@ go run main.go -db camingress.db
 #   CAMINGRESS_RTMP_BASE_URL=rtmp://localhost:1935   (mediamtx 转发 ingress 的 RTMP 地址)
 #   CAMINGRESS_SECRET=       (密码加密密钥, 生产必填)
 
-# 4. 启动 Vue 客户端
+# 5. 启动 Vue 客户端
 cd ../web
 npm install && npm run dev
-# 浏览器访问 http://localhost:5173
+# 浏览器访问 http://localhost:5173/player/<房间名> 即可观看
 
-# 5. (可选) 合成测试源验证链路
+# 6. (可选) 合成测试源验证链路
 ffmpeg -re -f lavfi -i "testsrc=size=640x360:rate=25" -f lavfi -i "sine=frequency=440" \
   -c:v libx264 -preset ultrafast -tune zerolatency -g 25 -pix_fmt yuv420p -c:a aac \
   -f rtsp -rtsp_transport tcp "rtsp://localhost:8554/src_test"
-# 然后在 Web 界面创建通道: source=rtsp://localhost:8554/src_test → 启动
-# 验证: livekit-cli list-participants --room <房间名> 应显示 2 条轨道
+# 创建通道: source=rtsp://localhost:8554/src_test → 启动 → /player/<房间> 看到彩条测试画面
 ```
 
 ## 环境变量
@@ -161,4 +168,5 @@ ffmpeg -re -f lavfi -i "testsrc=size=640x360:rate=25" -f lavfi -i "sine=frequenc
 
 - **LiveKit ingress WHIP 输入**只接受精确 fmtp 匹配的 H.264(42001f)/VP8 offer（官方 `newMediaEngine` 硬编码），摄像头透传 SDP 无法协商 → 主链路用 RTMP forward（同为无重编码转发）
 - **MediaMTX 官方镜像无 shell**，无法容器内 healthcheck；依赖 camingress 启动时 API 轮询（`WaitReady`）
-- Docker Desktop (WSL2) 下 mediamtx 容器端口转发偶发异常，Windows 研发模式建议用原生二进制；生产 Linux 用容器
+- **Docker Desktop (WSL2) localhost UDP 端口转发不可靠**：浏览器 WebRTC 媒体面（UDP 7882-7886）连不通，报 "could not establish pc connection" → **Windows 研发模式必须原生跑 livekit-server**（见快速开始）；生产 Linux 无此问题
+- Docker Desktop 下 mediamtx 容器端口映射偶发异常（如 9997 丢失），`--force-recreate` 可修复
