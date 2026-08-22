@@ -192,14 +192,20 @@ func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	bin := s.deps.Push.Bin()
-	cmd := exec.CommandContext(ctx, bin,
+	args := []string{
 		"-hide_banner", "-loglevel", "error",
-		"-rtsp_transport", "tcp",
 		"-i", input,
+	}
+	if strings.HasPrefix(input, "rtsp://") || strings.HasPrefix(input, "rtsps://") {
+		// TCP 更可靠 (仅 RTSP 源可用该选项)
+		args = append(args, "-rtsp_transport", "tcp")
+	}
+	args = append(args,
 		"-frames:v", "1",
 		"-vf", "scale=640:-2",
 		"-f", "image2", "-vcodec", "mjpeg", "pipe:1",
 	)
+	cmd := exec.CommandContext(ctx, bin, args...)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = io.Discard

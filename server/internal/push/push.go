@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -91,9 +92,17 @@ func (m *Manager) Bin() string { return m.ffmpegBin }
 func buildArgs(source, rtmpURL, transcode string) []string {
 	args := []string{
 		"-hide_banner", "-loglevel", "warning",
-		"-rtsp_transport", "tcp", // TCP 更可靠, 避免 UDP 丢包
-		"-i", source,
 	}
+
+	isRTSP := strings.HasPrefix(source, "rtsp://") || strings.HasPrefix(source, "rtsps://")
+	if isRTSP {
+		// TCP 更可靠, 避免 UDP 丢包 (仅 RTSP 源可用该选项)
+		args = append(args, "-rtsp_transport", "tcp")
+	} else {
+		// 文件源循环播放 (演示通道用)
+		args = append(args, "-stream_loop", "-1")
+	}
+	args = append(args, "-i", source)
 
 	if transcode == "h264" {
 		// H.265/其他 → H.264 (软件编码, 无 low_delay 标志, 兼容 B 帧 HEVC)

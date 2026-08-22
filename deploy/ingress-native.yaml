@@ -1,14 +1,20 @@
-# LiveKit Ingress 原生模式配置 (Windows 研发)
-# 用于: 原生 livekit-server + 原生 ingress (容器↔宿主 UDP 受限的替代方案)
-api_key: devkey
-api_secret: secret
-ws_url: ws://localhost:7880
-
+# LiveKit Ingress 服务配置 (Windows 原生研发模式)
+# ingress 是独立进程: livekit-server 通过 Redis psrpc 总线派发 ingress 请求,
+# 本进程监听 RTMP 1935 (收 mediamtx 转发) / WHIP 8082, 再以 publisher 身份加入房间
+# 二进制: livekit/ingress 仓库 cmd/server 本地构建 (release 无 Windows 预编译包)
 redis:
   address: localhost:6379
 
+# 与 livekit-native.yaml 的 keys 保持一致 (dev 默认值)
+api_key: devkey
+api_secret: secret
+ws_url: ws://127.0.0.1:7880
+
 rtmp_port: 1935
-whip_port: 8080
+whip_port: 8082
+health_port: 7888
 
 logging:
   level: info
+
+development: true
