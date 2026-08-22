@@ -15,6 +15,12 @@ web/dist/
 # 本地 TLS 证书（勿提交）
 server/auto.crt
 server/auto.key
+auto.crt
+auto.key
+
+# memurai/mediamtx 运行产物
+memurai-log.txt
+dump.rdb
 
 # graphify 分析缓存
 graphify-out/cache/

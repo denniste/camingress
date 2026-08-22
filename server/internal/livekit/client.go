@@ -137,6 +137,8 @@ func (c *Client) createIngress(input livekit.IngressInput, name, roomName string
 		ParticipantIdentity: name,
 		ParticipantName:     name,
 	}
+	// 注: RTMP 输入不允许 bypass 转码 (LiveKit 硬限制, 仅 WHIP 可 bypass),
+	// 原生 ingress 转码依赖 GStreamer 编码器 — 见 deploy/ingress-native.yaml 与 skill 记录
 	info, err := c.ingressClient().CreateIngress(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("创建 ingress 失败: %w", err)
