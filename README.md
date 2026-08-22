@@ -37,7 +37,7 @@ RTSP 摄像头 ──► mediamtx (拉流+透传, 无重编码) ──RTMP──
 | 媒体引擎 | **mediamtx** (Go 单二进制, HTTP API 编排) | RTSP 拉流 → RTMP 转发，H.264/H.265 透传 |
 | 回退引擎 | FFmpeg (Go 子进程管理) | 不兼容编码/老设备的转码兜底 |
 | 中间层 | **Go** + SQLite | 通道管理 / ONVIF 发现 / 鉴权 / ingress 编排 |
-| 客户端 | Vue 3 + livekit-client | 浏览器观看 / 通道管理 / 会议 |
+| 客户端 | React 18 + @livekit/components-react | 浏览器观看 / 通道管理 / 会议 |
 | 部署 | Docker Compose (生产) / 原生二进制 (研发) | Linux 生产，Windows 研发 |
 
 ## 环境定位
@@ -63,8 +63,8 @@ D:\CamIngress\
 │       ├── mediamtx\         # MediaMTX HTTP API 客户端（path 编排）
 │       ├── push\             # ffmpeg 推流进程管理（回退链路）
 │       └── store\            # SQLite 存储（含凭证 AES-GCM 加密）
-├── web\                      # Vue 3 客户端
-│   └── src\views\            # 页面（通道管理/发现/播放/会议）
+├── web\                      # React 18 客户端 (Vite + @livekit/components-react)
+│   └── src\pages\            # 页面（控制台/通道管理/发现/播放/会议）
 └── deploy\
     ├── docker-compose.yml    # 生产部署（redis+livekit+ingress+mediamtx+camingress）
     ├── livekit.yaml          # LiveKit 配置
@@ -128,7 +128,7 @@ go run main.go -db camingress.db
 #   CAMINGRESS_RTMP_BASE_URL=rtmp://localhost:1935   (mediamtx 转发 ingress 的 RTMP 地址)
 #   CAMINGRESS_SECRET=       (密码加密密钥, 生产必填)
 
-# 5. 启动 Vue 客户端
+# 5. 启动 React 客户端
 cd ../web
 npm install && npm run dev
 # 浏览器访问 http://localhost:5173/player/<房间名> 即可观看

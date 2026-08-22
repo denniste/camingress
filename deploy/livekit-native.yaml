@@ -1,0 +1,28 @@
+# LiveKit Server 配置 (Windows 原生研发模式)
+# 与 deploy/livekit.yaml 的差异: ingress 绑定本地地址 (容器主机名 "ingress" 在原生环境不可解析,
+# 导致 RTMP ingress 无法监听 1935 — 这是 2026-08-22 早间排查出的根因)
+port: 7880
+bind_addresses:
+  - 0.0.0.0
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 7882
+  port_range_end: 7886
+  use_external_ip: false
+  node_ip: 192.168.31.104
+
+redis:
+  address: localhost:6379
+
+keys:
+  devkey: secret
+
+ingress:
+  # 原生模式: 内嵌 ingress 绑定本地端口
+  # whip 用 8082 避开 camingress 的 8080
+  rtmp_base_url: "rtmp://127.0.0.1:1935"
+  whip_base_url: "http://127.0.0.1:8082"
+
+logging:
+  level: info

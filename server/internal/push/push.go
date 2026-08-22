@@ -77,6 +77,16 @@ func (m *Manager) Running(channelID string) bool {
 	return ok
 }
 
+// Count 当前运行中的 ffmpeg 进程数
+func (m *Manager) Count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.procs)
+}
+
+// Bin 返回 ffmpeg 二进制路径 (供快照/健康检查复用)
+func (m *Manager) Bin() string { return m.ffmpegBin }
+
 // buildArgs 构造 ffmpeg 参数
 func buildArgs(source, rtmpURL, transcode string) []string {
 	args := []string{

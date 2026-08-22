@@ -2,10 +2,15 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +45,12 @@ func (s *Server) Run(addr string) error {
 
 	// 健康检查
 	r.HandleFunc("/api/health", s.handleHealth).Methods("GET")
+
+	// 管理台聚合状态
+	r.HandleFunc("/api/status", s.handleStatus).Methods("GET")
+
+	// 通道快照 (ffmpeg 抓帧 JPEG, 管理台缩略图)
+	r.HandleFunc("/api/channels/{id}/snapshot", s.handleSnapshot).Methods("GET")
 
 	// 设备管理
 	r.HandleFunc("/api/devices", s.handleListDevices).Methods("GET")
@@ -78,6 +89,128 @@ func writeJSON(w http.ResponseWriter, v interface{}, code int) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"status": "ok"}, 200)
+}
+
+// ── 管理台聚合状态 ──
+
+// handleStatus 聚合管理台所需全部状态: 服务健康 / 通道运行时 / 告警
+func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
+	// 1. mediamtx 健康 + path 运行时状态
+	mtxUp := s.deps.MediaMTX.Ready()
+	pathOnline := map[string]bool{}
+	if mtxUp {
+		if paths, err := s.deps.MediaMTX.ListPaths(); err == nil {
+			for _, p := range paths {
+				pathOnline[p.Name] = p.Online
+			}
+		}
+	}
+
+	// 2. livekit 健康
+	lkUp := s.deps.LiveKit.Healthy()
+
+	// 3. 通道运行时状态
+	chs, err := s.deps.Store.ListChannels()
+	if err != nil {
+		writeJSON(w, map[string]string{"error": err.Error()}, 500)
+		return
+	}
+	type channelStatus struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Status      string `json:"status"`
+		ActiveMode  string `json:"active_mode"`
+		Room        string `json:"room"`
+		PathOnline  bool   `json:"path_online"`
+		PushRunning bool   `json:"push_running"`
+		WHEPURL     string `json:"whep_url,omitempty"`
+	}
+	channelStates := make([]channelStatus, 0, len(chs))
+	for _, c := range chs {
+		cs := channelStatus{
+			ID:          c.ID,
+			Name:        c.Name,
+			Status:      c.Status,
+			ActiveMode:  c.ActiveMode,
+			Room:        c.Room,
+			PathOnline:  pathOnline[c.ID],
+			PushRunning: s.deps.Push.Running(c.ID),
+		}
+		if c.Status == "active" {
+			cs.WHEPURL = s.deps.MediaMTX.WHEPUrl(c.ID)
+		}
+		channelStates = append(channelStates, cs)
+	}
+
+	// 4. 告警
+	alerts := []string{}
+	if !lkUp {
+		alerts = append(alerts, "LiveKit 服务不可达 (7880)")
+	}
+	if !mtxUp {
+		alerts = append(alerts, "MediaMTX 服务不可达 (9997)")
+	}
+	for _, cs := range channelStates {
+		if cs.Status != "active" {
+			continue
+		}
+		if cs.ActiveMode == "direct" && !cs.PathOnline {
+			alerts = append(alerts, fmt.Sprintf("通道 [%s] 媒体链路离线 (path 未就绪)", cs.Name))
+		}
+		if cs.ActiveMode == "ffmpeg" && !cs.PushRunning {
+			alerts = append(alerts, fmt.Sprintf("通道 [%s] ffmpeg 推流进程已退出", cs.Name))
+		}
+	}
+
+	writeJSON(w, map[string]interface{}{
+		"services": map[string]interface{}{
+			"livekit":      map[string]bool{"up": lkUp},
+			"mediamtx":     map[string]bool{"up": mtxUp},
+			"ffmpeg_procs": s.deps.Push.Count(),
+		},
+		"channels": channelStates,
+		"alerts":   alerts,
+	}, 200)
+}
+
+// handleSnapshot ffmpeg 抓一帧 JPEG (管理台缩略图)
+// 优先走 mediamtx 本地重曝 (免摄像头鉴权), 否则直连源
+func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	c, err := s.deps.Store.GetChannel(id)
+	if err != nil {
+		writeJSON(w, map[string]string{"error": "通道不存在"}, 404)
+		return
+	}
+
+	input := c.Source
+	if c.Status == "active" && c.ActiveMode == "direct" {
+		input = fmt.Sprintf("rtsp://127.0.0.1:8554/%s", c.ID)
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+
+	bin := s.deps.Push.Bin()
+	cmd := exec.CommandContext(ctx, bin,
+		"-hide_banner", "-loglevel", "error",
+		"-rtsp_transport", "tcp",
+		"-i", input,
+		"-frames:v", "1",
+		"-vf", "scale=640:-2",
+		"-f", "image2", "-vcodec", "mjpeg", "pipe:1",
+	)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil || buf.Len() == 0 {
+		writeJSON(w, map[string]string{"error": "抓帧失败: " + err.Error()}, 502)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(buf.Bytes())
 }
 
 func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {

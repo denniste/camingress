@@ -96,8 +96,21 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+	// 迁移: 增加 active_mode 列 (运行时实际生效模式)
+	has2, err := s.hasColumn("channels", "active_mode")
+	if err != nil {
+		return err
+	}
+	if !has2 {
+		if _, err := s.db.Exec(`ALTER TABLE channels ADD COLUMN active_mode TEXT DEFAULT ''`); err != nil {
+			return err
+		}
+	}
 	// 兜底: 历史 NULL 行填充默认值
 	if _, err := s.db.Exec(`UPDATE channels SET mode='auto' WHERE mode IS NULL`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`UPDATE channels SET active_mode='' WHERE active_mode IS NULL`); err != nil {
 		return err
 	}
 	return nil
@@ -191,20 +204,21 @@ func (s *Store) DeleteDevice(id string) error {
 
 func (s *Store) SaveChannel(c *Channel) error {
 	_, err := s.db.Exec(
-		`INSERT INTO channels (id,device_id,name,source,status,transcode,mode,room,ingress_id,stream_key,created_at)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?)
+		`INSERT INTO channels (id,device_id,name,source,status,transcode,mode,active_mode,room,ingress_id,stream_key,created_at)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   device_id=excluded.device_id, name=excluded.name, source=excluded.source,
 		   status=excluded.status, transcode=excluded.transcode, mode=excluded.mode,
+		   active_mode=excluded.active_mode,
 		   room=excluded.room,
 		   ingress_id=excluded.ingress_id, stream_key=excluded.stream_key`,
 		c.ID, c.DeviceID, c.Name, c.Source, c.Status, c.Transcode, c.Mode,
-		c.Room, c.IngressID, c.StreamKey, c.CreatedAt.Format(time.RFC3339),
+		c.ActiveMode, c.Room, c.IngressID, c.StreamKey, c.CreatedAt.Format(time.RFC3339),
 	)
 	return err
 }
 
-const channelCols = `id,device_id,name,source,status,transcode,mode,room,ingress_id,stream_key,created_at`
+const channelCols = `id,device_id,name,source,status,transcode,mode,active_mode,room,ingress_id,stream_key,created_at`
 
 func (s *Store) ListChannels() ([]Channel, error) {
 	rows, err := s.db.Query(`SELECT ` + channelCols + ` FROM channels`)
@@ -217,7 +231,7 @@ func (s *Store) ListChannels() ([]Channel, error) {
 		var c Channel
 		var ca string
 		if err := rows.Scan(&c.ID, &c.DeviceID, &c.Name, &c.Source, &c.Status,
-			&c.Transcode, &c.Mode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
+			&c.Transcode, &c.Mode, &c.ActiveMode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339, ca)
@@ -231,7 +245,7 @@ func (s *Store) GetChannel(id string) (*Channel, error) {
 	var c Channel
 	var ca string
 	if err := row.Scan(&c.ID, &c.DeviceID, &c.Name, &c.Source, &c.Status,
-		&c.Transcode, &c.Mode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
+		&c.Transcode, &c.Mode, &c.ActiveMode, &c.Room, &c.IngressID, &c.StreamKey, &ca); err != nil {
 		return nil, err
 	}
 	c.CreatedAt, _ = time.Parse(time.RFC3339, ca)

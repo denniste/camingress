@@ -4,7 +4,9 @@ package livekit
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -180,6 +182,20 @@ func (c *Client) DeleteIngress(ingressID string) error {
 		IngressId: ingressID,
 	})
 	return err
+}
+
+// Healthy TCP 探测 livekit-server 是否可达 (信令/API 同端口)
+func (c *Client) Healthy() bool {
+	u, err := url.Parse(c.cfg.HTTPURL)
+	if err != nil {
+		return false
+	}
+	conn, err := net.DialTimeout("tcp", u.Host, 2*time.Second)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
 
 // ingressClient 创建 livekit-server 的 ingress 管理 twirp 客户端
