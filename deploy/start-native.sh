@@ -21,6 +21,23 @@ wait_port() { # $1=port $2=name $3=timeout(s)
   return 1
 }
 
+# ---- 0. 检测宿主 LAN IP 并写入 livekit/ingress 配置 (DHCP 会变!) ----
+HOST_IP=$(powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {\$_.IPAddress -notlike '127.*' -and \$_.IPAddress -notlike '169.*' -and \$_.IPAddress -notlike '198.18.*'} | Select-Object -First 1 -ExpandProperty IPAddress)" 2>/dev/null | tr -d '\r')
+IP_CHANGED=0
+if [ -n "$HOST_IP" ]; then
+  OLD_IP=$(grep -oE "node_ip: [0-9.]+" D:/CamIngress/deploy/livekit-native.yaml | awk '{print $2}')
+  if [ "$OLD_IP" != "$HOST_IP" ]; then
+    sed -i "s/node_ip: .*/node_ip: $HOST_IP/" D:/CamIngress/deploy/livekit-native.yaml
+    sed -i "s|ws_url: ws://[0-9.]*:7880|ws_url: ws://$HOST_IP:7880|" D:/CamIngress/deploy/ingress.yaml
+    IP_CHANGED=1
+    log "[0/6] 宿主 IP 变化: $OLD_IP → $HOST_IP (配置已更新, 将强制重启 livekit)"
+  else
+    log "[0/6] 宿主 IP: $HOST_IP (无变化)"
+  fi
+else
+  log "[0/6] ⚠ 未能检测宿主 IP, 使用配置中的现有值"
+fi
+
 # ---- 1. Memurai (Redis 兼容服务) ----
 if [ -n "$(port 6379)" ]; then
   log "[1/6] Redis(Memurai) 已在运行"
@@ -43,27 +60,27 @@ else
   fi
 fi
   # ---- 2. livekit-server (原生) ----
-  if [ -n "$(port 7880)" ]; then
+  if [ -n "$(port 7880)" ] && [ "$IP_CHANGED" = "0" ]; then
     log "[2/6] livekit-server 已在运行"
   else
+    [ "$IP_CHANGED" = "1" ] && log "[2/6] 强制重启 livekit-server (IP 变化)..."
+    powershell -NoProfile -Command "Get-Process -Name livekit-server -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null
+    sleep 2
     log "[2/6] 启动 livekit-server..."
     nohup /d/livekit-native/livekit-server.exe --config D:/CamIngress/deploy/livekit-native.yaml >"$LOGDIR/livekit.log" 2>&1 &
     wait_port 7880 "livekit-server" 15
   fi
 
-  # ---- 3. ingress (自构建原生) ----
-  # 关键: PATH 必须含 C:\msys64\mingw64\bin (GStreamer 1.28 DLL) + D:\livekit-native (run-handler 子进程按 PATH 找 ingress.exe)
-  if [ -n "$(port 1935)" ]; then
+  # ---- 3. ingress (Docker 容器: 完整视频唯一路径; 原生 build 视频轨被 GStreamer bug 卡死) ----
+  DOCKER="/c/Program Files/Docker/Docker/resources/bin/docker.exe"
+  if [ -n "$(port 1935)" ] && [ "$IP_CHANGED" = "0" ]; then
     log "[3/6] ingress 已在运行"
   else
-    log "[3/6] 启动 ingress (原生)..."
-    export PATH="/c/msys64/mingw64/bin:/d/livekit-native:$PATH"
-    nohup /d/livekit-native/ingress.exe --config D:/CamIngress/deploy/ingress-native.yaml >"$LOGDIR/ingress.log" 2>&1 &
-    wait_port 1935 "ingress-RTMP" 15
+    [ "$IP_CHANGED" = "1" ] && log "[3/6] 重启 ingress 容器 (IP 变化)..."
+    "$DOCKER" restart deploy-ingress-1 >/dev/null 2>&1 || "$DOCKER" start deploy-ingress-1 >/dev/null 2>&1
+    wait_port 1935 "ingress-RTMP" 20
     wait_port 7888 "ingress-health" 5
   fi
-  # 注: 若改用 Docker ingress (完整视频), 替换上面为:
-  #   /c/Program\ Files/Docker/Docker/resources/bin/docker.exe start deploy-ingress-1
 
 # ---- 4. mediamtx (原生) ----
 if [ -n "$(port 8554)" ]; then

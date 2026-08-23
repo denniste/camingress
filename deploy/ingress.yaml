@@ -1,11 +1,12 @@
 # LiveKit Ingress 服务配置
 api_key: devkey
 api_secret: secret
-# 研发环境 (livekit host 网络): ws://192.168.31.104:7880; 生产: ws://livekit:7880
-ws_url: ws://192.168.31.104:7880
+# 研发环境 (livekit host 网络): ws://<宿主当前IP>:7880 (DHCP 变化需同步 livekit-native.yaml 的 node_ip); 生产: ws://livekit:7880
+ws_url: ws://192.168.31.2:7880
 
 redis:
-  address: redis:6379
+  # Windows 研发环境: 指向宿主机的 Memurai (host.docker.internal 由 Docker Desktop 转发到宿主回环)
+  address: host.docker.internal:6379
 
 rtmp_port: 1935
 whip_port: 8080

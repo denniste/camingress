@@ -10,7 +10,8 @@ rtc:
   port_range_start: 7882
   port_range_end: 7886
   use_external_ip: false
-  node_ip: 192.168.31.104
+  node_ip: 192.168.31.2
+  # 注: DHCP 可能变化, 若 WebRTC 连不上请同步更新此处与 deploy/ingress.yaml 的 ws_url
 
 redis:
   address: localhost:6379
