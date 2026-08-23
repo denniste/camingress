@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import Channels from './pages/Channels'
 import Discovery from './pages/Discovery'
 import Player from './pages/Player'
+import Intercom from './pages/Intercom'
 import Meeting from './pages/Meeting'
 
 const router = createBrowserRouter([
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: 'channels', element: <Channels /> },
       { path: 'discovery', element: <Discovery /> },
       { path: 'meeting', element: <Meeting /> },
+      { path: 'intercom', element: <Intercom /> },
       { path: 'player/:room', element: <Player /> },
     ],
   },

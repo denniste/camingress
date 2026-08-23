@@ -10,6 +10,7 @@ export default function App() {
           <NavLink to="/channels">📡 通道管理</NavLink>
           <NavLink to="/discovery">🔍 设备发现</NavLink>
           <NavLink to="/meeting">👥 会议</NavLink>
+          <NavLink to="/intercom">🤖 AI 对讲</NavLink>
         </nav>
       </aside>
       <main className="content">

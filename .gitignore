@@ -22,6 +22,11 @@ auto.key
 memurai-log.txt
 dump.rdb
 
+# AI Agent
+agent/.env
+agent/.venv/
+agent/models/
+
 # graphify 分析缓存
 graphify-out/cache/
 graphify-out/.graphify_*
